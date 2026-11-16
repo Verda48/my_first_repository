@@ -1,0 +1,793 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>バカラ トレーニング</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+:root {
+  /* レイアウト: 中央寄せの1カラム。上から テーブル(2つの手札) → 結果 → 操作 → 出目表 → ルール */
+  --felt: #0d3b2f;
+  --felt-deep: #072a21;
+  --line: #c9a65a;
+  --ivory: #f7f2e6;
+  --ink: #1b1b1f;
+  --text: #eef3ee;
+  --muted: #a3bbb0;
+  --player: #2f6fd6;
+  --banker: #c9372c;
+  --tie: #23865a;
+  --suit-red: #c0281f;
+  --rule: rgba(201, 166, 90, 0.32);
+  --font-display: 'Bodoni Moda', 'Didot', 'Times New Roman', serif;
+  --font-body: 'Zen Kaku Gothic New', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Noto Sans JP', sans-serif;
+  --font-mono: 'DM Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background-color: var(--felt-deep);
+  background-image: radial-gradient(120% 60% at 50% 0%, var(--felt) 0%, var(--felt-deep) 70%);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+.wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* ---------- ヘッダー ---------- */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--line);
+  margin: 0;
+}
+h1 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin: 2px 0 4px;
+  text-wrap: balance;
+}
+.sub { margin: 0; color: var(--muted); font-size: 14px; }
+.status { display: flex; flex-wrap: wrap; gap: 8px 28px; margin-top: 12px; }
+.stat { display: flex; flex-direction: column; min-width: 0; }
+.stat span { font-size: 12px; color: var(--muted); }
+.stat b { font-family: var(--font-mono); font-weight: 500; font-size: 20px; font-variant-numeric: tabular-nums; }
+
+/* ---------- テーブル ---------- */
+.table {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.hand {
+  border: 1px solid var(--rule);
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 6px;
+  padding: 14px;
+  min-width: 0;
+  transition: box-shadow 0.3s, border-color 0.3s;
+}
+.hand.win { border-color: var(--line); box-shadow: 0 0 0 1px var(--line), 0 0 24px rgba(201, 166, 90, 0.25); }
+.hand-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; }
+.name { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.dot.P { background: var(--player); }
+.dot.B { background: var(--banker); }
+.total {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 52px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.hand.win .total { color: var(--line); }
+.cards { display: flex; gap: 6px; margin-top: 12px; min-height: 92px; }
+.note { margin: 10px 0 0; font-size: 13px; color: var(--muted); min-height: 1.6em; }
+
+.card {
+  position: relative;
+  width: 62px;
+  height: 90px;
+  flex: none;
+  background: var(--ivory);
+  color: var(--ink);
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  font-family: var(--font-display);
+  display: grid;
+  place-items: center;
+}
+.card.red { color: var(--suit-red); }
+.card .r { position: absolute; top: 5px; left: 7px; font-size: 19px; font-weight: 700; line-height: 1; }
+.card .s { position: absolute; top: 25px; left: 7px; font-size: 14px; line-height: 1; }
+.card .big { font-size: 32px; line-height: 1; margin-top: 14px; }
+.card.fresh { animation: dealIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.slot { width: 62px; height: 90px; flex: none; border: 1px dashed rgba(255, 255, 255, 0.25); border-radius: 6px; }
+@keyframes dealIn {
+  from { opacity: 0; transform: translate(-22px, -18px) rotate(-6deg); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- 結果 ---------- */
+.result {
+  border-block: 1px solid var(--rule);
+  padding-block: 14px;
+  min-height: 84px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+.tag { padding: 3px 12px; border-radius: 999px; color: #fff; font-weight: 700; font-size: 14px; }
+.tag.P { background: var(--player); }
+.tag.B { background: var(--banker); }
+.tag.T { background: var(--tie); }
+.score { font-family: var(--font-mono); font-size: 15px; font-variant-numeric: tabular-nums; }
+.pay { flex-basis: 100%; margin: 0; font-size: 14px; color: var(--muted); }
+.pay.warn { color: #f0b9a8; }
+
+/* ---------- 操作 ---------- */
+.controls { display: flex; flex-direction: column; gap: 16px; }
+fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+legend { padding: 0; margin-bottom: 6px; font-size: 12px; color: var(--muted); letter-spacing: 0.06em; }
+.seg { position: relative; display: grid; gap: 6px; }
+.seg.four { grid-template-columns: repeat(4, 1fr); }
+.seg.three { grid-template-columns: repeat(3, 1fr); }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding: 9px 4px;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+}
+.seg label small { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.seg input:checked + label { color: #fff; border-color: transparent; }
+.seg input:checked + label small { color: rgba(255, 255, 255, 0.85); }
+.seg input[value="P"]:checked + label { background: var(--player); }
+.seg input[value="B"]:checked + label { background: var(--banker); }
+.seg input[value="T"]:checked + label { background: var(--tie); }
+.seg input[value="none"]:checked + label { background: #4a5f57; }
+.seg input[name="bet"]:checked + label { background: #4a5f57; }
+.seg input[name="mode"]:checked + label { background: var(--line); color: #1b1608; }
+.seg input[name="mode"]:checked + label small { color: rgba(27, 22, 8, 0.75); }
+.mode-hint { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+.seg input:focus-visible + label { outline: 2px solid var(--line); outline-offset: 2px; }
+
+.deal {
+  width: 100%;
+  min-height: 52px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--line);
+  color: #1b1608;
+  font: 700 16px var(--font-body);
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+.deal:hover:not(:disabled) { filter: brightness(1.08); }
+.deal:focus-visible, .link-btn:focus-visible, summary:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.deal:disabled { opacity: 0.5; cursor: default; }
+.decide { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.decide[hidden] { display: none; }
+.ans {
+  min-height: 60px;
+  border: 0;
+  border-radius: 4px;
+  color: #fff;
+  font: 700 18px var(--font-body);
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+.ans.draw { background: var(--tie); }
+.ans.stand { background: #4a5f57; }
+.ans:hover { filter: brightness(1.12); }
+.ans:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.hand.ask { border-color: #fff; box-shadow: 0 0 0 1px #fff; }
+.pay.ok { color: #a6e6c4; }
+.pay b { color: inherit; }
+.mistakes { list-style: none; margin: 0; padding: 0; font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+.mistakes li { padding: 6px 10px; border-left: 3px solid var(--banker); background: rgba(0, 0, 0, 0.18); }
+.opt { display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; }
+.opt input { width: 20px; height: 20px; margin: 0; accent-color: var(--line); }
+
+.link-btn { background: none; border: 0; padding: 4px 0; color: var(--muted); font: 13px var(--font-body); text-decoration: underline; cursor: pointer; }
+.reset { align-self: flex-end; }
+
+/* ---------- ルール ---------- */
+details { border-top: 1px solid var(--rule); padding-top: 14px; }
+summary { cursor: pointer; font-weight: 700; letter-spacing: 0.06em; }
+.rules { margin-top: 12px; color: var(--muted); font-size: 14px; }
+.rules ul { margin: 0 0 12px; padding-left: 1.2em; }
+.rules li { margin-bottom: 4px; }
+.scroll-x { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); white-space: nowrap; }
+th { color: var(--text); font-weight: 500; }
+.fine { margin: 16px 0 0; font-size: 12px; color: var(--muted); }
+
+@media (max-width: 560px) {
+  .hand { padding: 10px; }
+  .name { font-size: 13px; gap: 6px; }
+  .total { font-size: 38px; }
+  .cards { gap: 4px; margin-top: 10px; min-height: 66px; }
+  .card, .slot { width: 44px; height: 64px; border-radius: 5px; }
+  .card .r { top: 4px; left: 5px; font-size: 14px; }
+  .card .s { top: 19px; left: 5px; font-size: 11px; }
+  .card .big { font-size: 22px; margin-top: 10px; }
+  .note { font-size: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card.fresh { animation: none; }
+  .hand { transition: none; }
+  .ans { transition: none; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Dealer Training</p>
+    <h1>バカラ ディーラートレーニング</h1>
+    <p class="sub">3枚目を「引く」か「引かない」かを自分で判断し、正誤を確認して覚えましょう。</p>
+    <div class="status">
+      <div class="stat"><span>正解 / 出題</span><b id="stat-score">0 / 0</b></div>
+      <div class="stat"><span>正答率</span><b id="stat-rate">–</b></div>
+      <div class="stat"><span>連続正解(最高)</span><b id="stat-streak">0 (0)</b></div>
+      <div class="stat"><span>シューの残り</span><b id="shoe">416</b></div>
+    </div>
+  </header>
+
+  <section class="table" aria-label="テーブル">
+    <article class="hand" id="hand-P">
+      <div class="hand-head">
+        <span class="name"><span class="dot P"></span>プレイヤー</span>
+        <span class="total" id="total-P" aria-label="プレイヤーの合計">–</span>
+      </div>
+      <div class="cards" id="cards-P"></div>
+      <p class="note" id="note-P"></p>
+    </article>
+    <article class="hand" id="hand-B">
+      <div class="hand-head">
+        <span class="name"><span class="dot B"></span>バンカー</span>
+        <span class="total" id="total-B" aria-label="バンカーの合計">–</span>
+      </div>
+      <div class="cards" id="cards-B"></div>
+      <p class="note" id="note-B"></p>
+    </article>
+  </section>
+
+  <div class="result" id="result" role="status" aria-live="polite"></div>
+
+  <section class="controls" aria-label="操作">
+    <fieldset>
+      <legend>モード</legend>
+      <div class="seg three">
+        <input type="radio" name="mode" id="mode-normal" value="normal" checked><label for="mode-normal">通常<small>実戦どおり</small></label>
+        <input type="radio" name="mode" id="mode-focus" value="focus"><label for="mode-focus">バンカー3〜6<small>集中</small></label>
+        <input type="radio" name="mode" id="mode-drill" value="drill"><label for="mode-drill">ドリル<small>条件のみ</small></label>
+      </div>
+      <p class="mode-hint" id="mode-hint"></p>
+    </fieldset>
+    <div class="decide" id="decide" hidden>
+      <button class="ans draw" id="ans-draw" type="button">引く</button>
+      <button class="ans stand" id="ans-stand" type="button">引かない</button>
+    </div>
+    <button class="deal" id="deal" type="button">カードを配る</button>
+    <button class="link-btn reset" id="reset" type="button">成績をリセット</button>
+  </section>
+
+  <section aria-label="最近の間違い" id="mistake-box" hidden>
+    <div class="section-head"><h2>最近の間違い</h2></div>
+    <ul class="mistakes" id="mistakes"></ul>
+  </section>
+
+  
+
+  <details>
+    <summary>ルール</summary>
+    <div class="rules">
+      <ul>
+        <li>合計は一の位だけを見ます。Aは1、2〜9はそのまま、10・J・Q・Kは0です。</li>
+        <li>最初の2枚でどちらかが8か9なら「ナチュラル」で、3枚目は引きません。</li>
+        <li>プレイヤーは0〜5で3枚目を引き、6〜7は引きません。</li>
+        <li>バンカーは、プレイヤーが引かなければ0〜5で引き、6〜7は引きません。プレイヤーが3枚目を引いたときは次の表で決まります。</li>
+      </ul>
+      <div class="scroll-x">
+        <table>
+          <thead><tr><th>バンカーの合計</th><th>引く条件(プレイヤーの3枚目)</th></tr></thead>
+          <tbody>
+            <tr><td>0〜2</td><td>何が出ても引く</td></tr>
+            <tr><td>3</td><td>8以外のとき</td></tr>
+            <tr><td>4</td><td>2〜7のとき</td></tr>
+            <tr><td>5</td><td>4〜7のとき</td></tr>
+            <tr><td>6</td><td>6か7のとき</td></tr>
+            <tr><td>7</td><td>引かない</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul style="margin-top:12px">
+        <li>最初の4枚が配られたあと、ナチュラルでなければ、まずプレイヤー、次にバンカーの順に「引く」「引かない」を答えます。</li>
+        <li>正解ならそのまま進みます。不正解のときは理由が表示され、「次へ」を押すと正しい処理で続きます。</li>
+        <li>ナチュラルの回は3枚目がないため、出題されません。</li>
+        <li>モードは3種類です。「通常」は実戦どおり、「バンカー3〜6集中」はバンカーが2枚で3〜6になる配りを多めに出し、「ドリル」はカードを配らずバンカーの条件だけを連続で出題します。</li>
+      </ul>
+    </div>
+  </details>
+
+  <p class="fine">8デッキ(416枚)のシューから引き、残りが20枚を切ると入れ替えます。</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------- カードの準備 ----------
+  var SUITS = [
+    { mark: '♠', red: false, label: 'スペード' },
+    { mark: '♥', red: true, label: 'ハート' },
+    { mark: '♦', red: true, label: 'ダイヤ' },
+    { mark: '♣', red: false, label: 'クラブ' }
+  ];
+  var RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+  var DECKS = 8;
+  var NAMES = { P: 'プレイヤー', B: 'バンカー', T: 'タイ' };
+  var DELAY = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 120 : 520;
+
+  // ---------- 状態 ----------
+  var shoe = [];
+  var busy = false;
+  var hands = { P: [], B: [] };
+  var stats = { asked: 0, correct: 0, streak: 0, best: 0 };
+  var mistakes = [];
+
+  function $(id) { return document.getElementById(id); }
+  function fmt(n) { return n.toLocaleString('ja-JP'); }
+  function wait(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+
+  // シュー(カードの山)を作ってシャッフルする
+  function newShoe() {
+    var cards = [];
+    for (var d = 0; d < DECKS; d++) {
+      SUITS.forEach(function (s) {
+        RANKS.forEach(function (r) {
+          cards.push({ rank: r, mark: s.mark, red: s.red, label: s.label });
+        });
+      });
+    }
+    // フィッシャー–イェーツのシャッフル
+    for (var i = cards.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = cards[i];
+      cards[i] = cards[j];
+      cards[j] = tmp;
+    }
+    return cards;
+  }
+
+  // カード1枚の点数(A=1、2〜9はそのまま、10・J・Q・K=0)
+  function cardValue(rank) {
+    if (rank === 'A') return 1;
+    if (rank === '10' || rank === 'J' || rank === 'Q' || rank === 'K') return 0;
+    return Number(rank);
+  }
+
+  // 手札の合計(一の位だけ)
+  function total(hand) {
+    var sum = 0;
+    hand.forEach(function (c) { sum += cardValue(c.rank); });
+    return sum % 10;
+  }
+
+  // バンカーが3枚目を引くか(プレイヤーが3枚目を引いたとき)
+  function bankerDraws(bankerTotal, playerThird) {
+    if (bankerTotal <= 2) return true;
+    if (bankerTotal === 3) return playerThird !== 8;
+    if (bankerTotal === 4) return playerThird >= 2 && playerThird <= 7;
+    if (bankerTotal === 5) return playerThird >= 4 && playerThird <= 7;
+    if (bankerTotal === 6) return playerThird === 6 || playerThird === 7;
+    return false;
+  }
+
+  // 1ラウンド分を最後まで計算する。order は配る順番。
+  function playRound() {
+    var P = [];
+    var B = [];
+    var order = [];
+    function give(side, hand) {
+      var card = shoe.pop();
+      hand.push(card);
+      order.push({ side: side, card: card });
+    }
+    give('P', P); give('B', B); give('P', P); give('B', B);
+
+    var natural = total(P) >= 8 || total(B) >= 8;
+    var playerDrew = false;
+    var bankerDrew = false;
+    if (!natural) {
+      var playerThird = null;
+      if (total(P) <= 5) {
+        give('P', P);
+        playerDrew = true;
+        playerThird = cardValue(P[2].rank);
+      }
+      var bt = total(B); // この時点でバンカーはまだ2枚
+      var drawB = playerThird === null ? bt <= 5 : bankerDraws(bt, playerThird);
+      if (drawB) {
+        give('B', B);
+        bankerDrew = true;
+      }
+    }
+    return { P: P, B: B, order: order, natural: natural, playerDrew: playerDrew, bankerDrew: bankerDrew };
+  }
+
+  // ---------- 表示 ----------
+  function cardHtml(c, fresh) {
+    return '<div class="card' + (c.red ? ' red' : '') + (fresh ? ' fresh' : '') +
+      '" role="img" aria-label="' + c.label + 'の' + c.rank + '">' +
+      '<span class="r">' + c.rank + '</span><span class="s">' + c.mark + '</span><span class="big">' + c.mark + '</span></div>';
+  }
+
+  function renderHand(side, freshIndex) {
+    var cards = hands[side];
+    var html = '';
+    cards.forEach(function (c, i) { html += cardHtml(c, i === freshIndex); });
+    for (var i = cards.length; i < 2; i++) html += '<div class="slot"></div>';
+    $('cards-' + side).innerHTML = html;
+    $('total-' + side).textContent = cards.length ? total(cards) : '–';
+  }
+
+  function updateStatus() {
+    $('shoe').textContent = fmt(shoe.length);
+  }
+
+  function setNote(side, round) {
+    var drew = side === 'P' ? round.playerDrew : round.bankerDrew;
+    var text;
+    if (round.natural && total(round[side]) >= 8) text = 'ナチュラル。このまま勝負です。';
+    else if (round.natural) text = 'ナチュラルが出たため、引きません。';
+    else if (drew) text = '3枚目を引きました。';
+    else text = '引かずに2枚で確定しました。';
+    $('note-' + side).textContent = text;
+  }
+
+  function showMessage(html, kind) {
+    $('result').innerHTML = '<p class="pay' + (kind ? ' ' + kind : '') + '">' + html + '</p>';
+  }
+
+  // ---------- 成績 ----------
+  function renderStats() {
+    $('stat-score').textContent = stats.correct + ' / ' + stats.asked;
+    $('stat-rate').textContent = stats.asked ? Math.round(stats.correct / stats.asked * 100) + '%' : '–';
+    $('stat-streak').textContent = stats.streak + ' (' + stats.best + ')';
+
+    $('mistake-box').hidden = mistakes.length === 0;
+    var html = '';
+    mistakes.slice(-5).reverse().forEach(function (m) { html += '<li>' + m + '</li>'; });
+    $('mistakes').innerHTML = html;
+  }
+
+  // ---------- 出題 ----------
+  // バンカーの3枚目の条件(プレイヤーが3枚目を引いたとき)
+  function bankerRuleText(bt) {
+    if (bt <= 2) return 'バンカーが0〜2のときは、プレイヤーの3枚目が何でも引きます。';
+    if (bt === 3) return 'バンカーが3のときは、プレイヤーの3枚目が8以外なら引きます(8のときは引きません)。';
+    if (bt === 4) return 'バンカーが4のときは、プレイヤーの3枚目が2〜7なら引きます。';
+    if (bt === 5) return 'バンカーが5のときは、プレイヤーの3枚目が4〜7なら引きます。';
+    if (bt === 6) return 'バンカーが6のときは、プレイヤーの3枚目が6か7なら引きます。';
+    return 'バンカーが7のときは、引きません。';
+  }
+
+  function explainPlayer(pt, draw) {
+    return 'プレイヤーの合計は' + pt + '。' +
+      (draw ? '0〜5なので引きます。' : '6〜7なので引きません。');
+  }
+
+  function explainBanker(bt, round, draw) {
+    if (!round.playerDrew) {
+      return 'プレイヤーが引かなかったので、バンカーは合計' + bt + '。' +
+        (draw ? '0〜5なので引きます。' : '6〜7なので引きません。');
+    }
+    var v = cardValue(round.P[2].rank);
+    return 'プレイヤーの3枚目の点数は' + v + '、バンカーの合計は' + bt + '。' +
+      bankerRuleText(bt) + (draw ? '→ 引きます。' : '→ 引きません。');
+  }
+
+  var answerFn = null; // 回答待ちの間だけ入る処理
+  var resumeFn = null; // 「次へ」待ちの間だけ入る処理
+  var mode = 'normal'; // normal / focus / drill
+  var session = 0;    // モードを切り替えるたびに増やし、進行中の処理を打ち切る
+
+  var HINTS = {
+    normal: '実戦と同じ配りで練習します。',
+    focus: 'バンカーが2枚で3〜6になる配りを多め(約8割)に出します。',
+    drill: 'カードを配らず、バンカーの条件だけを連続で出題します。モードを切り替えると終了します。'
+  };
+
+  function startLabel() { return mode === 'drill' ? 'ドリルを始める' : 'カードを配る'; }
+
+  function setButton(label, disabled) {
+    $('deal').textContent = label;
+    $('deal').disabled = disabled;
+  }
+
+  function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
+  function randInt(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
+
+  // 1問出題して、回答を待ち、正誤を表示する。最後まで進めたら true、途中で打ち切られたら false
+  async function quiz(side, question, correctDraw, explanation, mistakeLabel, okWait) {
+    var sid = session;
+    $('hand-' + side).classList.add('ask');
+    showMessage(question);
+    $('decide').hidden = false;
+    setButton('回答してください', true);
+
+    var answer = await new Promise(function (resolve) { answerFn = resolve; });
+    answerFn = null;
+    if (answer === 'cancel' || sid !== session) return false;
+    $('decide').hidden = true;
+    $('hand-' + side).classList.remove('ask');
+
+    var answeredDraw = answer === 'draw';
+    var ok = answeredDraw === correctDraw;
+    stats.asked++;
+    if (ok) {
+      stats.correct++;
+      stats.streak++;
+      if (stats.streak > stats.best) stats.best = stats.streak;
+    } else {
+      stats.streak = 0;
+      mistakes.push(mistakeLabel + ' → 正解は「' + (correctDraw ? '引く' : '引かない') + '」(あなた: ' + (answeredDraw ? '引く' : '引かない') + ')');
+    }
+    renderStats();
+
+    if (ok) {
+      showMessage('<b>正解!</b> ' + explanation, 'ok');
+      setButton('配っています…', true);
+      await wait(okWait || DELAY * 2.4);
+    } else {
+      showMessage('<b>不正解。</b> あなたの回答は「' + (answeredDraw ? '引く' : '引かない') + '」、正解は「' +
+        (correctDraw ? '引く' : '引かない') + '」です。<br>' + explanation, 'warn');
+      setButton('次へ', false);
+      await new Promise(function (resolve) { resumeFn = resolve; });
+      resumeFn = null;
+      setButton('配っています…', true);
+    }
+    if (sid !== session) return false;
+    $('result').innerHTML = '';
+    return true;
+  }
+
+  // ---------- 通常・集中モード ----------
+  // 最初の4枚が「プレイヤー0〜5、バンカー3〜6」になるまで、上の4枚をシューの底へ回す
+  function biasShoe() {
+    for (var k = 0; k < 300; k++) {
+      var n = shoe.length;
+      var pt = (cardValue(shoe[n - 1].rank) + cardValue(shoe[n - 3].rank)) % 10;
+      var bt = (cardValue(shoe[n - 2].rank) + cardValue(shoe[n - 4].rank)) % 10;
+      if (pt <= 5 && bt >= 3 && bt <= 6) return;
+      shoe.unshift.apply(shoe, shoe.splice(n - 4, 4));
+    }
+  }
+
+  async function addCard(step, sid) {
+    await wait(DELAY);
+    if (sid !== session) return false;
+    hands[step.side].push(step.card);
+    renderHand(step.side, hands[step.side].length - 1);
+    return true;
+  }
+
+  async function deal() {
+    if (busy) return;
+    busy = true;
+    var sid = session;
+    setButton('配っています…', true);
+
+    var reshuffled = false;
+    if (shoe.length < 20) { shoe = newShoe(); reshuffled = true; }
+    if (mode === 'focus' && Math.random() < 0.8) biasShoe();
+
+    // テーブルを空にする
+    hands = { P: [], B: [] };
+    $('hand-P').classList.remove('win');
+    $('hand-B').classList.remove('win');
+    $('note-P').textContent = '';
+    $('note-B').textContent = '';
+    $('result').innerHTML = '';
+    renderHand('P');
+    renderHand('B');
+
+    var round = playRound();
+    updateStatus();
+
+    // 最初の4枚(プレイヤー・バンカー・プレイヤー・バンカー)
+    for (var i = 0; i < 4; i++) {
+      if (!(await addCard(round.order[i], sid))) return;
+    }
+    await wait(250);
+    if (sid !== session) return;
+
+    if (round.natural) {
+      showMessage('ナチュラル(8か9)です。3枚目は引かずに勝負します。');
+      await wait(DELAY * 2.4);
+      if (sid !== session) return;
+    } else {
+      // プレイヤーの3枚目
+      var pt2 = total(hands.P);
+      if (!(await quiz('P',
+        'プレイヤーの合計は <b>' + pt2 + '</b>。3枚目を引きますか?',
+        round.playerDrew,
+        explainPlayer(pt2, round.playerDrew),
+        'プレイヤー ' + pt2))) return;
+      if (round.playerDrew) {
+        if (!(await addCard(round.order[4], sid))) return;
+      }
+
+      // バンカーの3枚目
+      var bt2 = total(hands.B);
+      var q = round.playerDrew
+        ? 'プレイヤーの3枚目は <b>' + cardValue(round.P[2].rank) + '</b>(点数)、バンカーの合計は <b>' + bt2 + '</b>。バンカーは3枚目を引きますか?'
+        : 'プレイヤーは引きませんでした。バンカーの合計は <b>' + bt2 + '</b>。3枚目を引きますか?';
+      var label = round.playerDrew
+        ? 'バンカー ' + bt2 + ' / プレイヤーの3枚目 ' + cardValue(round.P[2].rank)
+        : 'バンカー ' + bt2 + ' / プレイヤーは引かず';
+      if (!(await quiz('B', q, round.bankerDrew, explainBanker(bt2, round, round.bankerDrew), label))) return;
+      if (round.bankerDrew) {
+        if (!(await addCard(round.order[round.order.length - 1], sid))) return;
+      }
+    }
+    await wait(250);
+    if (sid !== session) return;
+
+    // 勝敗の判定
+    var pt = total(round.P);
+    var bt = total(round.B);
+    var winner = pt > bt ? 'P' : bt > pt ? 'B' : 'T';
+    if (winner !== 'T') $('hand-' + winner).classList.add('win');
+    setNote('P', round);
+    setNote('B', round);
+
+    $('result').innerHTML =
+      '<span class="tag ' + winner + '">' + (winner === 'T' ? 'タイ(引き分け)' : NAMES[winner] + 'の勝ち') + '</span>' +
+      '<span class="score">プレイヤー ' + pt + ' / バンカー ' + bt + '</span>' +
+      (reshuffled ? '<p class="pay">シューを入れ替えました。</p>' : '');
+
+    updateStatus();
+    renderStats();
+    busy = false;
+    setButton('次のカードを配る', false);
+  }
+
+  // ---------- ドリルモード ----------
+  // 指定した点数のカードを1枚作る(10・J・Q・Kは0)
+  function makeCard(value) {
+    var rank = pick(RANKS.filter(function (r) { return cardValue(r) === value; }));
+    var s = pick(SUITS);
+    return { rank: rank, mark: s.mark, red: s.red, label: s.label };
+  }
+
+  // 合計が t になる2枚の手札を作る
+  function makeTwo(t) {
+    var a = randInt(0, 9);
+    return [makeCard(a), makeCard((t - a + 10) % 10)];
+  }
+
+  async function drill() {
+    if (busy) return;
+    busy = true;
+    var sid = session;
+    while (sid === session) {
+      var playerDrew = Math.random() < 0.8;
+      var pt = playerDrew ? randInt(0, 5) : randInt(6, 7);
+      var bt = Math.random() < 0.75 ? randInt(3, 6) : pick([0, 1, 2, 7]);
+      var P = makeTwo(pt);
+      var B = makeTwo(bt);
+      var v = null;
+      if (playerDrew) { v = randInt(0, 9); P.push(makeCard(v)); }
+
+      hands = { P: P, B: B };
+      $('hand-P').classList.remove('win');
+      $('hand-B').classList.remove('win');
+      renderHand('P');
+      renderHand('B');
+      $('note-P').textContent = playerDrew ? '3枚目を引きました。' : '引かずに2枚で確定しました。';
+      $('note-B').textContent = '';
+
+      var draw = playerDrew ? bankerDraws(bt, v) : bt <= 5;
+      var q = playerDrew
+        ? 'プレイヤーの3枚目は <b>' + v + '</b>(点数)、バンカーの合計は <b>' + bt + '</b>。バンカーは3枚目を引きますか?'
+        : 'プレイヤーは引きませんでした。バンカーの合計は <b>' + bt + '</b>。3枚目を引きますか?';
+      var label = playerDrew
+        ? 'バンカー ' + bt + ' / プレイヤーの3枚目 ' + v
+        : 'バンカー ' + bt + ' / プレイヤーは引かず';
+      var finished = await quiz('B', q, draw,
+        explainBanker(bt, { playerDrew: playerDrew, P: P }, draw), label, 700);
+      if (!finished) return;
+    }
+  }
+
+  // ---------- 画面の初期化・切り替え ----------
+  function clearTable() {
+    hands = { P: [], B: [] };
+    $('hand-P').classList.remove('win', 'ask');
+    $('hand-B').classList.remove('win', 'ask');
+    $('note-P').textContent = '';
+    $('note-B').textContent = '';
+    renderHand('P');
+    renderHand('B');
+    showMessage('「' + startLabel() + '」を押して始めましょう。');
+  }
+
+  // 進行中の出題や配り直しをすべて打ち切って、テーブルを空に戻す
+  function stopAll() {
+    session++;
+    if (answerFn) { var a = answerFn; answerFn = null; a('cancel'); }
+    if (resumeFn) { var r = resumeFn; resumeFn = null; r(); }
+    busy = false;
+    $('decide').hidden = true;
+    clearTable();
+    setButton(startLabel(), false);
+  }
+
+  function setMode(next) {
+    mode = next;
+    $('mode-hint').textContent = HINTS[next];
+    stopAll();
+  }
+
+  function reset() {
+    if (busy && mode !== 'drill') return;
+    stats = { asked: 0, correct: 0, streak: 0, best: 0 };
+    mistakes = [];
+    renderStats();
+    if (!busy) {
+      shoe = newShoe();
+      updateStatus();
+      clearTable();
+      setButton(startLabel(), false);
+    }
+  }
+
+  $('deal').addEventListener('click', function () {
+    if (resumeFn) { resumeFn(); return; } // 不正解のあと「次へ」として働く
+    if (mode === 'drill') drill(); else deal();
+  });
+  $('ans-draw').addEventListener('click', function () { if (answerFn) answerFn('draw'); });
+  $('ans-stand').addEventListener('click', function () { if (answerFn) answerFn('stand'); });
+  $('reset').addEventListener('click', reset);
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="mode"]'), function (input) {
+    input.addEventListener('change', function () { if (input.checked) setMode(input.value); });
+  });
+
+  // 起動時はテーブルを空にして待つ
+  shoe = newShoe();
+  updateStatus();
+  renderStats();
+  $('mode-hint').textContent = HINTS[mode];
+  clearTable();
+})();
+</script>
+
+</body></html>
